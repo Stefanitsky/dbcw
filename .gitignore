@@ -1,0 +1,9 @@
+# Sublime project files
+*.sublime-project
+*.sublime-workspace
+
+# Python
+__pycache__/
+build/
+*.egg-info/
+dist/
