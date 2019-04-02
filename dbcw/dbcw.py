@@ -1,4 +1,5 @@
-import json, pkg_resources
+import json
+import pkg_resources
 
 
 class DBConnectionWrapper:

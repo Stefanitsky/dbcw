@@ -1,6 +1,6 @@
 import setuptools
 
-version = '0.1'
+version = '0.2'
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -16,6 +16,11 @@ setuptools.setup(
     url="https://github.com/Stefanitsky/dbcw",
     packages=setuptools.find_packages(),
     scripts=['dbcw/dbcw.py'],
+    install_requires=[
+          'psycopg2',
+          'mysql-connector'
+      ],
+    keywords='db database tool wrapper connection connect',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Programming Language :: Python :: 3',
@@ -29,4 +34,10 @@ setuptools.setup(
         'Intended Audience :: Developers',
         'Topic :: Database :: Front-Ends'
     ],
+    project_urls={
+        'Documentation': 'https://github.com/Stefanitsky/dbcw/wiki',
+        'Say Thanks!': 'https://saythanks.io/to/Stefanitsky',
+        'Source': 'https://github.com/Stefanitsky/dbcw',
+        'Tracker': 'https://github.com/Stefanitsky/dbcw/issues',
+    },
 )
