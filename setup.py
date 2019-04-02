@@ -1,6 +1,6 @@
 import setuptools
 
-version = '0.2'
+version = '0.2.1'
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -16,6 +16,8 @@ setuptools.setup(
     url="https://github.com/Stefanitsky/dbcw",
     packages=setuptools.find_packages(),
     scripts=['dbcw/dbcw.py'],
+    package_data={'': ['db_queries.json']},
+    include_package_data=True,
     install_requires=[
           'psycopg2',
           'mysql-connector'
