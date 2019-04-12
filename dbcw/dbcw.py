@@ -57,7 +57,8 @@ class DBConnectionWrapper:
             # because MySQL connection module requires 'passwd' key
             self.settings['passwd'] = self.settings.pop('password')
             # Sets db name to connect
-            self.settings['database'] = self.settings.pop('dbname')
+            if 'dbname' in self.settings:
+                self.settings['database'] = self.settings.pop('dbname')
 
     def connect(self):
         '''
