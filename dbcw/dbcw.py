@@ -70,24 +70,29 @@ class DBConnectionWrapper:
             try:
                 import psycopg2
                 self.engine_module = psycopg2
-            except ImportError:
+                try:
+                    self.connection = psycopg2.connect(**self.settings)
+                    self.connection.set_session(autocommit=True)
+                except psycopg2.Error as exception:
+                    self.connection_error = exception
+                    self.connection = None
+                    raise exception
+            except ImportError as exception:
                 self.connection_error = 'psycopg2 module not found'
-            try:
-                self.connection = psycopg2.connect(**self.settings)
-            except psycopg2.Error as e:
-                self.connection_error = e
-                self.connection = None
+                raise exception
         elif self.engine == 'mysql':
             try:
                 import mysql.connector
                 self.engine_module = mysql.connector
                 try:
                     self.connection = mysql.connector.connect(**self.settings)
-                except mysql.connector.Error as e:
-                    self.connection_error = e
+                except mysql.connector.Error as exception:
+                    self.connection_error = exception
                     self.connection = None
-            except ImportError:
+                    raise exception
+            except ImportError as exception:
                 self.connection_error = 'mysql module not found!'
+                raise exception
         else:
             raise NotImplementedError(
                 'Database engine {} not implemented!'.format(self.engine))
@@ -172,9 +177,17 @@ class DBConnectionWrapper:
         if not self.connection:
             raise Exception('No database connection!')
         if self.engine == 'postgres':
-            self.cursor.execute(query)
-            columns = [name[0] for name in self.cursor.description]
-            return columns, self.fetch()
+            try:
+                self.cursor.execute(query)
+                if self.cursor.rowcount is not -1:
+                    columns = [name[0] for name in self.cursor.description]
+                    return columns, self.fetch()
+                else:
+                    return self.cursor.statusmessage, None
+            except self.engine_module.Error as exception:
+                return None, exception.pgerror
+            except Exception as exception:
+                return None, exception
         if self.engine == 'mysql':
             if db_name is not None:
                 self.cursor.execute("USE {};".format(db_name))
