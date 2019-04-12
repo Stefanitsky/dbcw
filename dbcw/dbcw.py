@@ -156,7 +156,7 @@ class DBConnectionWrapper:
         Returns current connected database name (string).
         '''
         if self.engine == 'postgres':
-            return self.settings['dbname']
+            return self.settings.get('dbname', None)
         elif self.engine == 'mysql':
             return self.settings.get('database', None)
 
@@ -211,16 +211,22 @@ class DBConnectionWrapper:
         result = self.execute_query(self.queries['get_db_list'])
         return [db_name[0] for db_name in result[1]]
 
-    def get_tables_list(self, db_name):
+    def get_tables_list(self, db_name=None):
         '''
         Returns a list of tables from the database,
         performing the necessary database query depending on the engine.
 
         Args:
-            db_name (string): db name from which need to return
+            db_name (string, optional): db name from which need to return
             the list of tables
+
+        Raises:
+            Exception: if no database selected
         '''
-        self.update_current_connected_db(db_name)
+        if db_name:
+            self.update_current_connected_db(db_name)
+        if self.get_current_connected_db() is None:
+            raise Exception('No database selected!')
         if self.engine == 'postgres':
             if self.get_current_connected_db() == db_name:
                 return self.execute_query(self.queries['get_tables_list'])[1]
@@ -233,7 +239,6 @@ class DBConnectionWrapper:
                 temp_connection = DBConnectionWrapper(temp_settings)
                 return temp_connection.get_tables_list(db_name)
         elif self.engine == 'mysql':
-            self.cursor.execute("USE {};".format(db_name))
             result = self.execute_query(self.queries['get_tables_list'])
             return result[1]
 
@@ -257,21 +262,28 @@ class DBConnectionWrapper:
             return self.execute_query(
                 self.queries['get_table_data'].format(table_name))
 
-    def get_db_structure(self, db_name):
+    def get_db_structure(self, db_name=None):
         '''
         Returns database structure,
         performing the necessary database query depending on the engine.
 
         Args:
-            db_name (string): database name from which to get structure
+            db_name (string, optional): database name from which to get
+            structure
 
         Returns:
             Returns the data received from the method execute_query(),
             which returns:
                 columns (list): list with column names (string)
                 rows (list): list of rows (tuples)
+
+        Raises:
+            Exception: if no database selected
         '''
-        self.update_current_connected_db(db_name)
+        if db_name:
+            self.update_current_connected_db(db_name)
+        if self.get_current_connected_db() is None:
+            raise Exception('No database selected!')
         if self.engine == 'postgres':
             return self.execute_query(self.queries['get_db_structure'])
         elif self.engine == 'mysql':
