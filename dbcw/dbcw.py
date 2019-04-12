@@ -164,18 +164,26 @@ class DBConnectionWrapper:
 
         Args:
             db_name (string, optional): name of the database
-            in which the query will be executed. Important to MySQL,
-            because it executes "USE db_name" query.
+            in which the query will be executed.
 
         Returns:
-            columns (list): list with column names (string)
-            rows (list): list of rows (tuples)
+            tuple with:
+                columns (list): list with column names (string),
+                rows (list): list of rows (tuples)
+            tuple with:
+                None,
+                Exception: exception message
+            tuple with:
+                string: execute status message,
+                None
 
         Raises:
             Exception: if no database connection
         '''
         if not self.connection:
             raise Exception('No database connection!')
+        if db_name:
+            self.update_current_connected_db(db_name)
         if self.engine == 'postgres':
             try:
                 self.cursor.execute(query)
