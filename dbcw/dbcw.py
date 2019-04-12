@@ -56,6 +56,8 @@ class DBConnectionWrapper:
             # Changes the password key in the settings,
             # because MySQL connection module requires 'passwd' key
             self.settings['passwd'] = self.settings.pop('password')
+            # Sets db name to connect
+            self.settings['database'] = self.settings.pop('dbname')
 
     def connect(self):
         '''
@@ -70,24 +72,29 @@ class DBConnectionWrapper:
             try:
                 import psycopg2
                 self.engine_module = psycopg2
-            except ImportError:
+                try:
+                    self.connection = psycopg2.connect(**self.settings)
+                    self.connection.set_session(autocommit=True)
+                except psycopg2.Error as exception:
+                    self.connection_error = exception
+                    self.connection = None
+                    raise exception
+            except ImportError as exception:
                 self.connection_error = 'psycopg2 module not found'
-            try:
-                self.connection = psycopg2.connect(**self.settings)
-            except psycopg2.Error as e:
-                self.connection_error = e
-                self.connection = None
+                raise exception
         elif self.engine == 'mysql':
             try:
                 import mysql.connector
                 self.engine_module = mysql.connector
                 try:
                     self.connection = mysql.connector.connect(**self.settings)
-                except mysql.connector.Error as e:
-                    self.connection_error = e
+                except mysql.connector.Error as exception:
+                    self.connection_error = exception
                     self.connection = None
-            except ImportError:
+                    raise exception
+            except ImportError as exception:
                 self.connection_error = 'mysql module not found!'
+                raise exception
         else:
             raise NotImplementedError(
                 'Database engine {} not implemented!'.format(self.engine))
@@ -141,7 +148,7 @@ class DBConnectionWrapper:
                 self.settings['dbname'] = db_name
                 self.connect()
         elif self.engine == 'mysql':
-            self.settings['db'] = db_name
+            self.settings['database'] = db_name
             self.connect()
 
     def get_current_connected_db(self):
@@ -149,9 +156,9 @@ class DBConnectionWrapper:
         Returns current connected database name (string).
         '''
         if self.engine == 'postgres':
-            return self.settings['dbname']
+            return self.settings.get('dbname', None)
         elif self.engine == 'mysql':
-            return self.settings.get('db', None)
+            return self.settings.get('database', None)
 
     def execute_query(self, query, db_name=None):
         '''
@@ -159,25 +166,39 @@ class DBConnectionWrapper:
 
         Args:
             db_name (string, optional): name of the database
-            in which the query will be executed. Important to MySQL,
-            because it executes "USE db_name" query.
+            in which the query will be executed.
 
         Returns:
-            columns (list): list with column names (string)
-            rows (list): list of rows (tuples)
+            tuple with:
+                columns (list): list with column names (string),
+                rows (list): list of rows (tuples)
+            tuple with:
+                None,
+                Exception: exception message
+            tuple with:
+                string: execute status message,
+                None
 
         Raises:
             Exception: if no database connection
         '''
         if not self.connection:
             raise Exception('No database connection!')
+        if db_name:
+            self.update_current_connected_db(db_name)
         if self.engine == 'postgres':
-            self.cursor.execute(query)
-            columns = [name[0] for name in self.cursor.description]
-            return columns, self.fetch()
+            try:
+                self.cursor.execute(query)
+                if self.cursor.rowcount is not -1:
+                    columns = [name[0] for name in self.cursor.description]
+                    return columns, self.fetch()
+                else:
+                    return self.cursor.statusmessage, None
+            except self.engine_module.Error as exception:
+                return None, exception.pgerror
+            except Exception as exception:
+                return None, exception
         if self.engine == 'mysql':
-            if db_name is not None:
-                self.cursor.execute("USE {};".format(db_name))
             self.cursor.execute(query)
             columns = [name[0] for name in self.cursor.description]
             return columns, self.fetch()
@@ -190,16 +211,22 @@ class DBConnectionWrapper:
         result = self.execute_query(self.queries['get_db_list'])
         return [db_name[0] for db_name in result[1]]
 
-    def get_tables_list(self, db_name):
+    def get_tables_list(self, db_name=None):
         '''
         Returns a list of tables from the database,
         performing the necessary database query depending on the engine.
 
         Args:
-            db_name (string): db name from which need to return
+            db_name (string, optional): db name from which need to return
             the list of tables
+
+        Raises:
+            Exception: if no database selected
         '''
-        self.update_current_connected_db(db_name)
+        if db_name:
+            self.update_current_connected_db(db_name)
+        if self.get_current_connected_db() is None:
+            raise Exception('No database selected!')
         if self.engine == 'postgres':
             if self.get_current_connected_db() == db_name:
                 return self.execute_query(self.queries['get_tables_list'])[1]
@@ -212,7 +239,6 @@ class DBConnectionWrapper:
                 temp_connection = DBConnectionWrapper(temp_settings)
                 return temp_connection.get_tables_list(db_name)
         elif self.engine == 'mysql':
-            self.cursor.execute("USE {};".format(db_name))
             result = self.execute_query(self.queries['get_tables_list'])
             return result[1]
 
@@ -236,21 +262,28 @@ class DBConnectionWrapper:
             return self.execute_query(
                 self.queries['get_table_data'].format(table_name))
 
-    def get_db_structure(self, db_name):
+    def get_db_structure(self, db_name=None):
         '''
         Returns database structure,
         performing the necessary database query depending on the engine.
 
         Args:
-            db_name (string): database name from which to get structure
+            db_name (string, optional): database name from which to get
+            structure
 
         Returns:
             Returns the data received from the method execute_query(),
             which returns:
                 columns (list): list with column names (string)
                 rows (list): list of rows (tuples)
+
+        Raises:
+            Exception: if no database selected
         '''
-        self.update_current_connected_db(db_name)
+        if db_name:
+            self.update_current_connected_db(db_name)
+        if self.get_current_connected_db() is None:
+            raise Exception('No database selected!')
         if self.engine == 'postgres':
             return self.execute_query(self.queries['get_db_structure'])
         elif self.engine == 'mysql':
