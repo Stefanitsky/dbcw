@@ -56,6 +56,8 @@ class DBConnectionWrapper:
             # Changes the password key in the settings,
             # because MySQL connection module requires 'passwd' key
             self.settings['passwd'] = self.settings.pop('password')
+            # Sets db name to connect
+            self.settings['database'] = self.settings.pop('dbname')
 
     def connect(self):
         '''
@@ -146,7 +148,7 @@ class DBConnectionWrapper:
                 self.settings['dbname'] = db_name
                 self.connect()
         elif self.engine == 'mysql':
-            self.settings['db'] = db_name
+            self.settings['database'] = db_name
             self.connect()
 
     def get_current_connected_db(self):
@@ -156,7 +158,7 @@ class DBConnectionWrapper:
         if self.engine == 'postgres':
             return self.settings['dbname']
         elif self.engine == 'mysql':
-            return self.settings.get('db', None)
+            return self.settings.get('database', None)
 
     def execute_query(self, query, db_name=None):
         '''
@@ -197,8 +199,6 @@ class DBConnectionWrapper:
             except Exception as exception:
                 return None, exception
         if self.engine == 'mysql':
-            if db_name is not None:
-                self.cursor.execute("USE {};".format(db_name))
             self.cursor.execute(query)
             columns = [name[0] for name in self.cursor.description]
             return columns, self.fetch()
