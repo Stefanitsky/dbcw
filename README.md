@@ -9,7 +9,14 @@ But if you need to send your own query to the database - this is also possible.
 
 Supported engines:  
         - PostgreSQL  
-        - MySQL  
+        - MySQL / MariaDB
+
+## Documentation
+
+You can run the [pydoc](https://docs.python.org/3/library/pydoc.html) module to read the documentation:
+```bash
+python -m pydoc -b
+```
 
 ## Installation
 
